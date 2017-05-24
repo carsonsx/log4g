@@ -1,0 +1,5 @@
+{
+  "level": "ALL",
+  "filename": "logs/log4g.log",
+  "flag": ["Ldate", "Lshortfile", "Lmicroseconds"]
+}
