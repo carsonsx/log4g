@@ -67,7 +67,7 @@ func HasLevel(l Level) bool {
 //
 func GetLevelDisplayName(l Level) string {
 	if name, ok := alignNames[l]; ok {
-		return name
+		return "[" + name + "]"
 	} else {
 		panic(fmt.Sprintf("invalid log level %v", l))
 	}
