@@ -40,7 +40,7 @@ func loadConfig() {
 	if len(os.Args) > 1 {
 		fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 		fs.StringVar(&config.Prefix, "log4g-prefix", config.Prefix, "set log4g prefix")
-		fs.StringVar(&config.Level, "level", config.Level, "set log4g level")
+		fs.StringVar(&config.Level, "log4g-level", config.Level, "set log4g level")
 		fs.StringVar(&config.Flag, "log4g-flag", config.Flag, "set log4g flag, separated by '|'")
 		fs.StringVar(&config.Filename, "log4g-filename", config.Filename, "set log4g filename")
 		for i := 1; i < len(os.Args); i++ {
