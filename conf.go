@@ -37,9 +37,17 @@ func loadConfig() {
 	}
 
 	// override from os arguments
-	flag.StringVar(&config.Prefix, "prefix", config.Prefix, "set log4g prefix")
-	flag.StringVar(&config.Level, "level", config.Level, "set log4g level")
-	flag.StringVar(&config.Flag, "flag", config.Flag, "set log4g flag, separated by '|'")
-	flag.StringVar(&config.Filename, "filename", config.Filename, "set log4g filename")
-	flag.Parse()
+	if len(os.Args) > 1 {
+		fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+		fs.StringVar(&config.Prefix, "log4g-prefix", config.Prefix, "set log4g prefix")
+		fs.StringVar(&config.Level, "level", config.Level, "set log4g level")
+		fs.StringVar(&config.Flag, "log4g-flag", config.Flag, "set log4g flag, separated by '|'")
+		fs.StringVar(&config.Filename, "log4g-filename", config.Filename, "set log4g filename")
+		for i := 1; i < len(os.Args); i++ {
+			 if fs.Parse(os.Args[i:]) == nil {
+				 break
+			 }
+		}
+	}
+
 }

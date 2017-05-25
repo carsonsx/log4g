@@ -32,6 +32,10 @@ func Trace(arg interface{}, args ...interface{})  {
 	std.Log(level_TRACE, arg, args...)
 }
 
+func GetLevelName() string {
+	return getLevelName(gLevel)
+}
+
 func IsLevelEnabled(level Level) bool {
 	return std.IsLevel(level)
 }
