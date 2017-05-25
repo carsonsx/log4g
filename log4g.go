@@ -53,9 +53,10 @@ func init() {
 		gFlag = gFlag | getFlagByName(name)
 	}
 
-	std = append(std, newConsoleLogger(gLevel))
 	if config.Filename != "" {
 		std = append(std, newFileLogger(gLevel, config.Filename))
+	} else {
+		std = append(std, newConsoleLogger(gLevel))
 	}
 }
 
