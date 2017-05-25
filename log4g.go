@@ -16,19 +16,19 @@ const (
 	// Bits or'ed together to control what's printed.
 	// There is no control over the order they appear (the order listed
 	// here) or the format they present (as described in the comments).
-	// The prefix is followed by a colon only when Llongfile or Lshortfile
+	// The prefix is followed by a colon only when llongfile or lshortfile
 	// is specified.
-	// For example, flags Ldate | Ltime (or LstdFlags) produce,
+	// For example, flags ldate | ltime (or lstdFlags) produce,
 	//	2009/01/23 01:23:23 message
-	// while flags Ldate | Ltime | Lmicroseconds | Llongfile produce,
+	// while flags ldate | ltime | lmicroseconds | llongfile produce,
 	//	2009/01/23 01:23:23.123123 /a/b/c/d.go:23: message
-	Ldate         = 1 << iota     // the date in the local time zone: 2009/01/23
-	Ltime                         // the time in the local time zone: 01:23:23
-	Lmicroseconds                 // microsecond resolution: 01:23:23.123123.  assumes Ltime.
-	Llongfile                     // full file name and line number: /a/b/c/d.go:23
-	Lshortfile                    // final file name element and line number: d.go:23. overrides Llongfile
-	LUTC                          // if Ldate or Ltime is set, use UTC rather than the local time zone
-	LstdFlags     = Ldate | Ltime // initial values for the standard logger
+	ldate                                             = 1 << iota // the date in the local time zone: 2009/01/23
+	ltime                                                         // the time in the local time zone: 01:23:23
+	lmicroseconds                                                 // microsecond resolution: 01:23:23.123123.  assumes ltime.
+	llongfile                                                     // full file name and line number: /a/b/c/d.go:23
+	lshortfile                                                    // final file name element and line number: d.go:23. overrides llongfile
+	lutc                                                          // if ldate or ltime is set, use UTC rather than the local time zone
+	lstdFlags     = ldate | ltime                                 // initial values for the standard logger
 
 	calldepth = 4
 )
@@ -44,30 +44,30 @@ func init() {
 
 	loadConfig()
 
-	gLevel = GetLevelByName(Config.Level)
+	gLevel = getLevelByName(config.Level)
 
 	alignName(gLevel)
 
-	flags := strings.Split(Config.Flag, "|")
+	flags := strings.Split(config.Flag, "|")
 	for _, name := range flags {
 		gFlag = gFlag | getFlagByName(name)
 	}
 
 	std = append(std, newConsoleLogger(gLevel))
-	if Config.Filename != "" {
-		std = append(std, newFileLogger(gLevel, Config.Filename))
+	if config.Filename != "" {
+		std = append(std, newFileLogger(gLevel, config.Filename))
 	}
 }
 
 func getFlagByName(name string) int {
 	flags := make(map[string]int)
-	flags["date"] = Ldate
-	flags["time"] = Ltime
-	flags["microseconds"] = Lmicroseconds
-	flags["longfile"] = Llongfile
-	flags["shortfile"] = Lshortfile
-	flags["UTC"] = LUTC
-	flags["stdFlags"] = LstdFlags
+	flags["date"] = ldate
+	flags["time"] = ltime
+	flags["microseconds"] = lmicroseconds
+	flags["longfile"] = llongfile
+	flags["shortfile"] = lshortfile
+	flags["UTC"] = lutc
+	flags["stdFlags"] = lstdFlags
 	return flags[name]
 }
 
@@ -87,12 +87,12 @@ func (ls loggers) Log(level Level, arg interface{}, args ...interface{}) {
 	}
 }
 
-func newConsoleLogger(level Level) *LogWrapper {
+func newConsoleLogger(level Level) *loggerWrapper {
 	return newFileLogger(level, "")
 }
 
-func newFileLogger(level Level, filename string) *LogWrapper {
-	logger := new(LogWrapper)
+func newFileLogger(level Level, filename string) *loggerWrapper {
+	logger := new(loggerWrapper)
 	logger.level = level
 	var output io.Writer
 	if filename != "" {
@@ -110,14 +110,14 @@ func newFileLogger(level Level, filename string) *LogWrapper {
 	return logger
 }
 
-type LogWrapper struct {
+type loggerWrapper struct {
 	mu  sync.Mutex // ensures atomic writes; protects the following fields
 	out io.Writer  // destination for output
 	buf []byte     // for accumulating text to write
 	level Level
 }
 
-func (l *LogWrapper) Log(level Level, arg interface{}, args ...interface{}) {
+func (l *loggerWrapper) Log(level Level, arg interface{}, args ...interface{}) {
 	if level <= l.level {
 		var text string
 		switch arg.(type) {
@@ -128,21 +128,21 @@ func (l *LogWrapper) Log(level Level, arg interface{}, args ...interface{}) {
 			text = fmt.Sprintf(fmt.Sprintf("%v", arg), args...)
 			l.Output(calldepth, level, text)
 		}
-		if level == FATAL {
+		if level == level_FATAL {
 			os.Exit(1)
-		} else if level == PANIC {
+		} else if level == level_PANIC {
 			panic(text)
 		}
 	}
 }
 
-func (l *LogWrapper) Output(calldepth int, level Level, s string) error {
+func (l *loggerWrapper) Output(calldepth int, level Level, s string) error {
 	now := time.Now() // get this early.
 	var file string
 	var line int
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if gFlag&(Lshortfile|Llongfile) != 0 {
+	if gFlag&(lshortfile|llongfile) != 0 {
 		// release lock while getting caller info - it's expensive.
 		l.mu.Unlock()
 		var ok bool
@@ -164,7 +164,7 @@ func (l *LogWrapper) Output(calldepth int, level Level, s string) error {
 }
 
 // SetOutput sets the output destination for the logger.
-func (l *LogWrapper) SetOutput(w io.Writer) {
+func (l *loggerWrapper) SetOutput(w io.Writer) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.out = w
@@ -187,13 +187,13 @@ func itoa(buf *[]byte, i int, wid int) {
 	*buf = append(*buf, b[bp:]...)
 }
 
-func (l *LogWrapper) formatHeader(buf *[]byte, t time.Time, level Level, file string, line int) {
+func (l *loggerWrapper) formatHeader(buf *[]byte, t time.Time, level Level, file string, line int) {
 	*buf = append(*buf, gPrefix...)
-	if gFlag&LUTC != 0 {
+	if gFlag&lutc != 0 {
 		t = t.UTC()
 	}
-	if gFlag&(Ldate|Ltime|Lmicroseconds) != 0 {
-		if gFlag&Ldate != 0 {
+	if gFlag&(ldate|ltime|lmicroseconds) != 0 {
+		if gFlag&ldate != 0 {
 			year, month, day := t.Date()
 			itoa(buf, year, 4)
 			*buf = append(*buf, '/')
@@ -202,14 +202,14 @@ func (l *LogWrapper) formatHeader(buf *[]byte, t time.Time, level Level, file st
 			itoa(buf, day, 2)
 			*buf = append(*buf, ' ')
 		}
-		if gFlag&(Ltime|Lmicroseconds) != 0 {
+		if gFlag&(ltime|lmicroseconds) != 0 {
 			hour, min, sec := t.Clock()
 			itoa(buf, hour, 2)
 			*buf = append(*buf, ':')
 			itoa(buf, min, 2)
 			*buf = append(*buf, ':')
 			itoa(buf, sec, 2)
-			if gFlag&Lmicroseconds != 0 {
+			if gFlag&lmicroseconds != 0 {
 				*buf = append(*buf, '.')
 				itoa(buf, t.Nanosecond()/1e3, 6)
 			}
@@ -217,11 +217,11 @@ func (l *LogWrapper) formatHeader(buf *[]byte, t time.Time, level Level, file st
 		}
 	}
 
-	*buf = append(*buf, GetLevelDisplayName(level)...)
+	*buf = append(*buf, getLevelDisplayName(level)...)
 	*buf = append(*buf, ' ')
 
-	if gFlag&(Lshortfile|Llongfile) != 0 {
-		if gFlag&Lshortfile != 0 {
+	if gFlag&(lshortfile|llongfile) != 0 {
+		if gFlag&lshortfile != 0 {
 			short := file
 			for i := len(file) - 1; i > 0; i-- {
 				if file[i] == '/' {

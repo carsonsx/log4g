@@ -10,7 +10,7 @@ import (
 
 const config_file_path = "log4g.json"
 
-var Config struct{
+var config struct{
 	Prefix   string `json:"prefix"`
 	Level    string `json:"level"`
 	Flag     string `json:"flag"`
@@ -20,8 +20,8 @@ var Config struct{
 func loadConfig() {
 
 	// default
-	Config.Level = GetLevelName(DEBUG)
-	Config.Flag = "date|microseconds|shortfile"
+	config.Level = getLevelName(level_DEBUG)
+	config.Flag = "date|microseconds|shortfile"
 
 	// load form config file
 	if _, err := os.Stat(config_file_path); err == nil {
@@ -30,16 +30,16 @@ func loadConfig() {
 			log.Print(err)
 			return
 		}
-		err = json.Unmarshal(data, &Config)
+		err = json.Unmarshal(data, &config)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	// override from os arguments
-	flag.StringVar(&Config.Prefix, "prefix", Config.Prefix, "set log4g prefix")
-	flag.StringVar(&Config.Level, "level", Config.Level, "set log4g level")
-	flag.StringVar(&Config.Flag, "flag", Config.Flag, "set log4g flag, separated by '|'")
-	flag.StringVar(&Config.Filename, "filename", Config.Filename, "set log4g filename")
+	flag.StringVar(&config.Prefix, "prefix", config.Prefix, "set log4g prefix")
+	flag.StringVar(&config.Level, "level", config.Level, "set log4g level")
+	flag.StringVar(&config.Flag, "flag", config.Flag, "set log4g flag, separated by '|'")
+	flag.StringVar(&config.Filename, "filename", config.Filename, "set log4g filename")
 	flag.Parse()
 }
