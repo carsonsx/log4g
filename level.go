@@ -9,30 +9,30 @@ import (
 type Level uint64
 
 const (
-	level_OFF   Level = 0
-	level_PANIC Level = 100
-	level_FATAL Level = 200
-	level_ERROR Level = 300
-	level_WARN  Level = 400
-	level_INFO  Level = 500
-	level_DEBUG Level = 600
-	level_TRACE Level = 700
-	level_ALL   Level = math.MaxUint64
+	LEVEL_OFF   Level = 0
+	LEVEL_PANIC Level = 100
+	LEVEL_FATAL Level = 200
+	LEVEL_ERROR Level = 300
+	LEVEL_WARN  Level = 400
+	LEVEL_INFO  Level = 500
+	LEVEL_DEBUG Level = 600
+	LEVEL_TRACE Level = 700
+	LEVEL_ALL   Level = math.MaxUint64
 )
 
 var names = make(map[Level]string)
 var alignNames = make(map[Level]string)
 
 func initLevelName() {
-	names[level_OFF] = "OFF"
-	names[level_PANIC] = "PANIC"
-	names[level_FATAL] = "FATAL"
-	names[level_ERROR] = "ERROR"
-	names[level_WARN] = "WARN"
-	names[level_INFO] = "INFO"
-	names[level_DEBUG] = "DEBUG"
-	names[level_TRACE] = "TRACE"
-	names[level_ALL] = "ALL"
+	names[LEVEL_OFF] = "OFF"
+	names[LEVEL_PANIC] = "PANIC"
+	names[LEVEL_FATAL] = "FATAL"
+	names[LEVEL_ERROR] = "ERROR"
+	names[LEVEL_WARN] = "WARN"
+	names[LEVEL_INFO] = "INFO"
+	names[LEVEL_DEBUG] = "DEBUG"
+	names[LEVEL_TRACE] = "TRACE"
+	names[LEVEL_ALL] = "ALL"
 }
 
 func alignName(level Level) {

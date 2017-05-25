@@ -20,7 +20,7 @@ var config struct{
 func loadConfig() {
 
 	// default
-	config.Level = getLevelName(level_DEBUG)
+	config.Level = getLevelName(LEVEL_DEBUG)
 	config.Flag = "date|microseconds|shortfile"
 
 	// load form config file

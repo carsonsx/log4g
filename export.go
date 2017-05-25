@@ -5,35 +5,39 @@ func Log(level Level, arg interface{}, args ...interface{})  {
 }
 
 func Panic(arg interface{}, args ...interface{})  {
-	std.Log(level_PANIC, arg, args...)
+	std.Log(LEVEL_PANIC, arg, args...)
 }
 
 func Fatal(arg interface{}, args ...interface{})  {
-	std.Log(level_FATAL, arg, args...)
+	std.Log(LEVEL_FATAL, arg, args...)
 }
 
 func Error(arg interface{}, args ...interface{})  {
-	std.Log(level_ERROR, arg, args...)
+	std.Log(LEVEL_ERROR, arg, args...)
 }
 
 func Warn(arg interface{}, args ...interface{})  {
-	std.Log(level_WARN, arg, args...)
+	std.Log(LEVEL_WARN, arg, args...)
 }
 
 func Info(arg interface{}, args ...interface{})  {
-	std.Log(level_INFO, arg, args...)
+	std.Log(LEVEL_INFO, arg, args...)
 }
 
 func Debug(arg interface{}, args ...interface{})  {
-	std.Log(level_DEBUG, arg, args...)
+	std.Log(LEVEL_DEBUG, arg, args...)
 }
 
 func Trace(arg interface{}, args ...interface{})  {
-	std.Log(level_TRACE, arg, args...)
+	std.Log(LEVEL_TRACE, arg, args...)
 }
 
-func GetLevelName() string {
-	return getLevelName(gLevel)
+func GetLevel() Level {
+	return gLevel
+}
+
+func GetLevelName(level Level) string {
+	return getLevelName(level)
 }
 
 func IsLevelEnabled(level Level) bool {
@@ -41,29 +45,29 @@ func IsLevelEnabled(level Level) bool {
 }
 
 func IsPanicEnabled() bool {
-	return IsLevelEnabled(level_PANIC)
+	return IsLevelEnabled(LEVEL_PANIC)
 }
 
 func IsFatalEnabled() bool {
-	return IsLevelEnabled(level_FATAL)
+	return IsLevelEnabled(LEVEL_FATAL)
 }
 
 func IsErrorEnabled() bool {
-	return IsLevelEnabled(level_ERROR)
+	return IsLevelEnabled(LEVEL_ERROR)
 }
 
 func IsWarnEnabled() bool {
-	return IsLevelEnabled(level_WARN)
+	return IsLevelEnabled(LEVEL_WARN)
 }
 
 func IsInfoEnabled() bool {
-	return IsLevelEnabled(level_INFO)
+	return IsLevelEnabled(LEVEL_INFO)
 }
 
 func IsDebugEnabled() bool {
-	return IsLevelEnabled(level_DEBUG)
+	return IsLevelEnabled(LEVEL_DEBUG)
 }
 
 func IsTraceEnabled() bool {
-	return IsLevelEnabled(level_TRACE)
+	return IsLevelEnabled(LEVEL_TRACE)
 }
