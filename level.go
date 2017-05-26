@@ -20,31 +20,50 @@ const (
 	LEVEL_ALL   Level = math.MaxUint64
 )
 
-var names = make(map[Level]string)
-var alignNames = make(map[Level]string)
+var (
+	levelNames = []string{"OFF", "PANIC", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}
+	names      = make(map[Level]string)
+
+)
 
 func initLevelName() {
-	names[LEVEL_OFF] = "OFF"
-	names[LEVEL_PANIC] = "PANIC"
-	names[LEVEL_FATAL] = "FATAL"
-	names[LEVEL_ERROR] = "ERROR"
-	names[LEVEL_WARN] = "WARN"
-	names[LEVEL_INFO] = "INFO"
-	names[LEVEL_DEBUG] = "DEBUG"
-	names[LEVEL_TRACE] = "TRACE"
+	for i, name := range levelNames {
+		names[Level(i*100)] = name
+	}
 	names[LEVEL_ALL] = "ALL"
 }
 
-func alignName(level Level) {
+func (l Level) Name() string {
+	if name, ok := names[l]; ok {
+		return name
+	}
+	return "UNKNOWN"
+}
+
+func NewAlignmentNames(level Level) *alignmentNames {
+	an := &alignmentNames{make(map[Level]string)}
+	an.align(level)
+	return an
+}
+
+type alignmentNames struct {
+	names map[Level]string
+}
+
+func (a *alignmentNames) align(level Level) {
 	maxNameLen := 0
 	for l, n := range names {
-		if l <= level {
-			if len(n) > maxNameLen {
-				maxNameLen = len(n)
-			}
+		if l <= level && len(n) > maxNameLen {
+			maxNameLen = len(n)
 		}
-		alignNames[l] = fmt.Sprintf("%"+strconv.Itoa(maxNameLen)+"s", n)
 	}
+	for l, n := range names {
+		a.names[l] = fmt.Sprintf("%"+strconv.Itoa(maxNameLen)+"s", n)
+	}
+}
+
+func (a *alignmentNames) Name(level Level) string {
+	return names[level]
 }
 
 // custom log level
@@ -54,7 +73,7 @@ func ForName(name string, intLevel uint64) Level {
 		panic(fmt.Sprintf("the level %d has existed", intLevel))
 	}
 	names[l] = name
-	alignName(gLevel)
+	//alignName(gLevel)
 	return l
 }
 
@@ -62,23 +81,6 @@ func ForName(name string, intLevel uint64) Level {
 func hasLevel(l Level) bool {
 	_, ok := names[l]
 	return ok
-}
-
-//
-func getLevelDisplayName(l Level) string {
-	if name, ok := alignNames[l]; ok {
-		return "[" + name + "]"
-	} else {
-		panic(fmt.Sprintf("invalid log level %v", l))
-	}
-}
-
-func getLevelName(l Level) string {
-	if name, ok := names[l]; ok {
-		return name
-	} else {
-		panic(fmt.Sprintf("invalid log level %v", l))
-	}
 }
 
 func getLevelByName(name string) Level {

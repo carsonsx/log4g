@@ -37,7 +37,7 @@ func init() {
 
 	gLevel = getLevelByName(config.Level)
 
-	alignName(gLevel)
+	//alignName(gLevel)
 
 	flags := strings.Split(config.Flag, "|")
 	for _, name := range flags {
@@ -45,9 +45,9 @@ func init() {
 	}
 
 	if config.Filename != "" {
-		std = append(std, newFileLogger(gLevel, config.Filename))
+		std = append(std, NewFileLogger(gLevel, config.Filename))
 	} else {
-		std = append(std, newConsoleLogger(gLevel))
+		std = append(std, NewConsoleLogger(gLevel))
 	}
 }
 
@@ -79,25 +79,23 @@ func (ls loggers) Log(level Level, arg interface{}, args ...interface{}) {
 	}
 }
 
-func newConsoleLogger(level Level) *loggerWrapper {
-	return newFileLogger(level, "")
+func NewConsoleLogger(level Level) *loggerWrapper {
+	return newLogger(level, os.Stdout)
 }
 
-func newFileLogger(level Level, filename string) *loggerWrapper {
+func NewFileLogger(level Level, filename string) *loggerWrapper {
+	os.MkdirAll(filepath.Dir(filename), os.ModePerm)
+	output, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		panic(err)
+	}
+	return newLogger(level, output)
+}
+
+func newLogger(level Level, output io.Writer) *loggerWrapper {
 	logger := new(loggerWrapper)
 	logger.level = level
-	var output io.Writer
-	if filename != "" {
-		os.MkdirAll(filepath.Dir(filename), os.ModePerm)
-		// Open the log file
-		fd, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
-		if err != nil {
-			panic(err)
-		}
-		output = fd
-	} else {
-		output = os.Stdout
-	}
+	logger.levelNames = NewAlignmentNames(level)
 	logger.out = output
 	return logger
 }
@@ -107,6 +105,7 @@ type loggerWrapper struct {
 	out   io.Writer  // destination for output
 	buf   []byte     // for accumulating text to write
 	level Level
+	levelNames *alignmentNames
 }
 
 func (l *loggerWrapper) Log(level Level, arg interface{}, args ...interface{}) {
@@ -209,7 +208,7 @@ func (l *loggerWrapper) formatHeader(buf *[]byte, t time.Time, level Level, file
 		}
 	}
 
-	*buf = append(*buf, getLevelDisplayName(level)...)
+	*buf = append(*buf, l.levelNames.Name(level)...)
 	*buf = append(*buf, ' ')
 
 	if gFlag&(lshortfile|llongfile) != 0 {

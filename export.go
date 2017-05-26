@@ -36,10 +36,6 @@ func GetLevel() Level {
 	return gLevel
 }
 
-func GetLevelName(level Level) string {
-	return getLevelName(level)
-}
-
 func IsLevelEnabled(level Level) bool {
 	return std.IsLevel(level)
 }
