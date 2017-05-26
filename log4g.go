@@ -10,6 +10,8 @@ import (
 	"time"
 	"strings"
 	"bytes"
+	"log"
+	"strconv"
 )
 
 const (
@@ -36,8 +38,9 @@ func init() {
 }
 
 type Logger interface {
+	BeforeLog()
 	Log(level Level, arg interface{}, args ...interface{})
-	Handle()
+	AfterLog()
 	Close()
 }
 
@@ -49,10 +52,12 @@ func (ls Loggers) IsLevel(level Level) bool {
 
 func (ls Loggers) Log(level Level, arg interface{}, args ...interface{}) {
 	for _, logger := range ls {
+		logger.BeforeLog()
 		logger.Log(level, arg, args...)
-		logger.Handle()
+		logger.AfterLog()
 	}
 }
+
 func (ls Loggers) Close() {
 	for _, logger := range ls {
 		logger.Close()
@@ -80,75 +85,91 @@ func initLoggers()  {
 	if len(Config.Loggers) == 0 {
 		*loggers = append(*loggers, newLogger(gPrefix, gFlag, os.Stdout))
 	} else {
-		for _, logger := range Config.Loggers {
-			if logger.Disabled {
+		for _, loggerConfig := range Config.Loggers {
+			if loggerConfig.Disabled {
 				continue
 			}
 			prefix := gPrefix
-			if logger.Prefix != "" {
-				prefix = logger.Prefix
+			if loggerConfig.Prefix != "" {
+				prefix = loggerConfig.Prefix
 			}
-			flag := parseFlag(logger.Flag, gFlag)
-			switch logger.Output {
+			flag := parseFlag(loggerConfig.Flag, gFlag)
+			switch loggerConfig.Output {
 			case "stdout":
-				*loggers = append(*loggers, newLogger(prefix, flag, os.Stdout))
+				if logger := newLogger(prefix, flag, os.Stdout); logger != nil {
+					*loggers = append(*loggers, logger)
+				}
 			case "stderr":
-				*loggers = append(*loggers, newLogger(prefix, flag, os.Stderr))
+				if logger := newLogger(prefix, flag, os.Stderr); logger != nil {
+					*loggers = append(*loggers, logger)
+				}
 			case "file":
-				*loggers = append(*loggers, NewFileLogger(prefix, flag, logger.Filename, logger.Maxlines, logger.Maxsize, logger.Daily))
+				if logger := NewFileLogger(prefix, flag, loggerConfig.Filename, loggerConfig.Maxlines, loggerConfig.Maxsize, loggerConfig.MaxCount, loggerConfig.Daily); logger != nil {
+					*loggers = append(*loggers, logger)
+				}
 			}
 		}
 	}
-
 }
 
-func lineCounter(r io.Reader) (int, error) {
+func lineCounter(filename string) int {
+	file, err := os.OpenFile(filename, os.O_RDONLY | os.O_CREATE, 0660)
+	if err != nil && !os.IsNotExist(err) {
+		return 0
+	}
+	defer file.Close()
 	buf := make([]byte, 32*1024)
 	count := 0
 	lineSep := []byte{'\n'}
-
 	for {
-		c, err := r.Read(buf)
-		count += bytes.Count(buf[:c], lineSep)
-
-		switch {
-		case err == io.EOF:
-			return count, nil
-
-		case err != nil:
-			return count, err
+		c, err := file.Read(buf)
+		if err == nil {
+			count += bytes.Count(buf[:c], lineSep)
+		} else if err == io.EOF {
+			return count
+		} else {
+			return 0
 		}
 	}
 }
 
-func NewFileLogger(prefix string, flag int, filename string, maxlines int, maxsize int64, daily bool) Logger {
+func NewFileLogger(prefix string, flag int, filename string, maxlines int, maxsize int64, maxcount int, daily bool) Logger {
+
 	os.MkdirAll(filepath.Dir(filename), os.ModePerm)
-	output, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
-	if err != nil {
-		panic(err)
-	}
+
 	fileLogger := new (FileLogger)
-	fileLogger.file = output
 	fileLogger.filename = filename
+	fileLogger.filedir = filepath.Dir(filename)
 	fileLogger.maxlines = maxlines
-	fileLogger.maxsize = maxsize
+	fileLogger.maxsize = maxsize * 1024 * 1024
+	fileLogger.maxcount = maxcount
+	fileLogger.format = "%s.%0" + strconv.Itoa(len(strconv.Itoa(maxcount-1))) +  "d"
 	fileLogger.daily = daily
-	fileLogger.GenericLogger = newLogger(prefix, flag, output)
-	lines, err := lineCounter(output)
-	if err == nil {
-		fileLogger.lines = lines
+	fileLogger.lines  = lineCounter(filename)
+
+	output, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		log.Print(err)
+		return nil
 	}
+	fileLogger.file = output
 	info, err := output.Stat()
-	if err == nil {
-		fileLogger.size = info.Size()
+	if err != nil {
+		log.Print(err)
+		return nil
 	}
 
-	filepath.Walk(filepath.Dir(filename), func(path string, info os.FileInfo, err error) error {
-		if strings.HasPrefix(filepath.Join(path, info.Name()), filename) {
+	fileLogger.size = info.Size()
+	fileLogger.lastTime = info.ModTime()
+
+	filepath.Walk(fileLogger.filedir, func(path string, info os.FileInfo, err error) error {
+		if strings.HasPrefix(path, filename) {
 			fileLogger.count++
 		}
 		return nil
 	})
+
+	fileLogger.GenericLogger = newLogger(prefix, flag, output)
 
 	return fileLogger
 }
@@ -166,13 +187,23 @@ type GenericLogger struct {
 	out   io.Writer  // destination for output
 	buf   []byte     // for accumulating text to write
 
-	prefix string
-	flag int
-	lastWrittenCount int
+	prefix    string
+	flag      int
+	lastBytes int
+	stop      bool
+	now  time.Time
+}
+
+func (l *GenericLogger) init() {
+
+}
+
+func (l *GenericLogger) BeforeLog() {
+	l.now = time.Now()
 }
 
 func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) {
-	if level <= gLevel {
+	if !l.stop && level <= gLevel {
 		var text string
 		switch arg.(type) {
 		case string:
@@ -191,7 +222,7 @@ func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) {
 }
 
 func (l *GenericLogger) Output(calldepth int, level Level, s string) error {
-	now := time.Now() // get this early.
+
 	var file string
 	var line int
 	l.mu.Lock()
@@ -208,26 +239,26 @@ func (l *GenericLogger) Output(calldepth int, level Level, s string) error {
 		l.mu.Lock()
 	}
 	l.buf = l.buf[:0]
-	l.formatHeader(&l.buf, now, level, file, line)
+	l.formatHeader(&l.buf, l.now, level, file, line)
 	l.buf = append(l.buf, s...)
 	if len(s) == 0 || s[len(s)-1] != '\n' {
 		l.buf = append(l.buf, '\n')
 	}
 	n, err := l.out.Write(l.buf)
 	if err == nil {
-		l.lastWrittenCount = n
+		l.lastBytes = n
 	} else {
-		l.lastWrittenCount = 0
+		l.lastBytes = 0
 	}
 
 	return err
 }
 
-func (l *GenericLogger) Close() {
+func (l *GenericLogger) AfterLog() {
 
 }
 
-func (l *GenericLogger) Handle() {
+func (l *GenericLogger) Close() {
 
 }
 
@@ -302,55 +333,123 @@ func (l *GenericLogger) formatHeader(buf *[]byte, t time.Time, level Level, file
 		*buf = append(*buf, file...)
 		*buf = append(*buf, ':')
 		itoa(buf, line, -1)
-		*buf = append(*buf, ": "...)
+		//*buf = append(*buf, ": "...)
 	}
 }
 
 type FileLogger struct {
 	*GenericLogger
 	filename string
+	filedir string
 	file     *os.File
 	maxlines int
 	maxsize  int64
+	maxcount int
 	daily    bool
 	lines    int
 	size     int64
 	count    int
+	format   string
+	lastTime time.Time
 }
 
-func (l *FileLogger) Handle() {
+func (l *FileLogger) BeforeLog() {
+	if l.daily {
+		l.dailyBackup()
+	}
+}
 
-	if l.lastWrittenCount <= 0 {
+func (l *FileLogger) dailyBackup() {
+	l.now = time.Now()
+	if !l.lastTime.IsZero() {
+		ltYear, ltMonth, ltDay := l.lastTime.Date()
+		nowYear, nowMonth, nowDay := l.now.Date()
+		if ltDay != nowDay || ltMonth != nowMonth || ltYear != nowYear {
+			strDate := fmt.Sprintf("%d%02d%02d", ltYear, ltMonth, ltDay)
+			dateDir := filepath.Join(l.filedir, strDate)
+			err := os.MkdirAll(dateDir, os.ModePerm)
+			if err == nil {
+				l.Close()
+				//move all file to date director
+				err = filepath.Walk(l.filedir, func(path string, info os.FileInfo, err error) error {
+					if strings.HasPrefix(path, l.filename) {
+						os.Remove(filepath.Join(l.filedir, strDate, info.Name()))
+						return os.Rename(filepath.Join(l.filedir, info.Name()), filepath.Join(l.filedir, strDate, info.Name()))
+					}
+					return nil
+				})
+				if err != nil {
+					Error(err)
+					return
+				}
+				l.count = 0
+				l.newOutput()
+			} else {
+				Error(err)
+			}
+		}
+	}
+}
+
+
+func (l *FileLogger) newOutput() {
+	//create new log file
+	output, err := os.OpenFile(l.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		l.stop = true
+	}
+	l.file = output
+	l.SetOutput(output)
+	l.lines = 0
+	l.size = 0
+	l.count++
+}
+
+func (l *FileLogger) AfterLog() {
+
+	if l.lastBytes <= 0 {
 		return
 	}
 
+	l.lastTime = l.now
+
 	l.lines++
-	l.size += int64(l.lastWrittenCount)
+	l.size += int64(l.lastBytes)
 	if (l.maxlines > 0 && l.lines >= l.maxlines) || (l.maxsize > 0 && l.size > l.maxsize) {
 		l.Close()
+
+		//remove the oldest log
+		if l.count == l.maxcount {
+			if os.Remove(fmt.Sprintf(l.format, l.filename, l.maxcount-1)) != nil {
+				l.stop = true
+				return
+			}
+			l.count--
+		}
+
 		//try to rename log files
+		var err error
 		for i := l.count; i > 0; i-- {
-			var err error
+			var oldpath string
 			if i == 1 {
-				err = os.Rename(l.filename, l.filename + ".001")
+				oldpath = l.filename
 			} else {
-				err = os.Rename(fmt.Sprintf("%s.%3d", l.filename, i-1), fmt.Sprintf("%s.%3d", l.filename, i))
+				oldpath = fmt.Sprintf(l.format, l.filename, i-1)
 			}
+			newpath := fmt.Sprintf(l.format, l.filename, i)
+			err = os.Rename(oldpath, newpath)
 			if err != nil {
-				//stop this logger
-				break
+				log.Println(err)
+				l.stop = true
+				return
 			}
 		}
-		output, err := os.OpenFile(l.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
-		if err != nil {
-			panic(err)
-		}
-		l.SetOutput(output)
-		l.lines = 0
-		l.size = 0
+
+		l.newOutput()
+
 	}
 }
 
 func (l *FileLogger) Close() {
-	l.Close()
+	l.file.Close()
 }

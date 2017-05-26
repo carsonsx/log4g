@@ -1,5 +1,8 @@
 package log4g
 
+import (
+	"time"
+)
 
 func Example()  {
 
@@ -44,6 +47,16 @@ func Example()  {
 	Panic("message...")
 	Panic("%d", LEVEL_PANIC)
 	Panic("Config -> %v", Config)
+
+	// Output:
+}
+
+func ExampleDead() {
+
+	for {
+		Debug(time.Now())
+		time.Sleep(100)
+	}
 
 	// Output:
 }

@@ -20,6 +20,7 @@ type loggerConfig struct{
 	Filename string `json:"filename"`
 	Maxsize  int64 `json:"maxsize"`
 	Maxlines int `json:"maxlines"`
+	MaxCount int `json:"maxcount"`
 	Daily    bool `json:"daily"`
 }
 
@@ -34,7 +35,7 @@ func loadConfig() {
 
 	// default
 	Config.Level = LEVEL_DEBUG.Name()
-	Config.Flag = "date|microseconds|shortfile"
+	Config.Flag = "date|time|shortfile"
 
 	// load form Config file
 	if _, err := os.Stat(config_file_path); err == nil {
@@ -78,10 +79,11 @@ func getFlagByName(name string) int {
 }
 
 func parseFlag(strFlag string, defaultValue int) int {
-	flags := strings.Split(strFlag, "|")
-	if len(flags) == 0 {
+	if strFlag == "" {
 		return defaultValue
 	}
+	flags := strings.Split(strFlag, "|")
+
 	flag := 0
 	for _, name := range flags {
 		flag = flag | getFlagByName(name)
