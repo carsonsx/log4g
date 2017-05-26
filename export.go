@@ -1,43 +1,47 @@
 package log4g
 
 func Log(level Level, arg interface{}, args ...interface{})  {
-	std.Log(level, arg, args...)
+	loggers.Log(level, arg, args...)
 }
 
 func Panic(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_PANIC, arg, args...)
+	loggers.Log(LEVEL_PANIC, arg, args...)
 }
 
 func Fatal(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_FATAL, arg, args...)
+	loggers.Log(LEVEL_FATAL, arg, args...)
 }
 
 func Error(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_ERROR, arg, args...)
+	loggers.Log(LEVEL_ERROR, arg, args...)
 }
 
 func Warn(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_WARN, arg, args...)
+	loggers.Log(LEVEL_WARN, arg, args...)
 }
 
 func Info(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_INFO, arg, args...)
+	loggers.Log(LEVEL_INFO, arg, args...)
 }
 
 func Debug(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_DEBUG, arg, args...)
+	loggers.Log(LEVEL_DEBUG, arg, args...)
 }
 
 func Trace(arg interface{}, args ...interface{})  {
-	std.Log(LEVEL_TRACE, arg, args...)
+	loggers.Log(LEVEL_TRACE, arg, args...)
 }
 
 func GetLevel() Level {
 	return gLevel
 }
 
+func SetLevel(level Level)  {
+	gLevel = level
+}
+
 func IsLevelEnabled(level Level) bool {
-	return std.IsLevel(level)
+	return loggers.IsLevel(level)
 }
 
 func IsPanicEnabled() bool {

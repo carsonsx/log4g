@@ -1,39 +1,29 @@
 {
   "level": "trace",
+  "prefix": "[log4g]",
   "flag": "date|microseconds|shortfile",
   "loggers":[
     {
-      "output": "stdout",
-      "flag": "date|microseconds|longfile"
+      "prefix": "[stdout]",
+      "flag": "date|microseconds|longfile",
+      "output": "stdout"
     },
     {
-      "level": "error",
       "output": "stderr"
     },
     {
-      "level": "debug",
       "output": "file",
       "filename": "logs/debug.log",
       "maxsize": 0,
-      "maxline": 0,
+      "maxlines": 10,
       "daily": false
     },
     {
-      "level": "trace",
-      "output": "file",
-      "filename": "logs/trace.log",
-      "maxsize": 0,
-      "maxline": 0,
-      "daily": false
-    },
-    {
-      "enabled": false,
-      "level": "info",
+      "disabled": true,
       "output": "socket"
     },
     {
-      "enabled": false,
-      "level": "all",
+      "disabled": true,
       "output": "elasticsearch"
     }
   ]

@@ -5,49 +5,86 @@ import (
 	"log"
 	"encoding/json"
 	"os"
-	"flag"
+	"strings"
 )
 
 const config_file_path = "log4g.json"
 
-var config struct{
+
+type loggerConfig struct{
+	Disabled bool `json:"disabled"`
 	Prefix   string `json:"prefix"`
 	Level    string `json:"level"`
 	Flag     string `json:"flag"`
+	Output   string `json:"output"`
 	Filename string `json:"filename"`
+	Maxsize  int64 `json:"maxsize"`
+	Maxlines int `json:"maxlines"`
+	Daily    bool `json:"daily"`
+}
+
+var Config struct{
+	Prefix   string `json:"prefix"`
+	Level    string `json:"level"`
+	Flag     string `json:"flag"`
+	Loggers []*loggerConfig `json:"Loggers"`
 }
 
 func loadConfig() {
 
 	// default
-	config.Level = LEVEL_DEBUG.Name()
-	config.Flag = "date|microseconds|shortfile"
+	Config.Level = LEVEL_DEBUG.Name()
+	Config.Flag = "date|microseconds|shortfile"
 
-	// load form config file
+	// load form Config file
 	if _, err := os.Stat(config_file_path); err == nil {
 		data, err := ioutil.ReadFile(config_file_path)
 		if err != nil {
 			log.Print(err)
 			return
 		}
-		err = json.Unmarshal(data, &config)
+		err = json.Unmarshal(data, &Config)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	// override from os arguments
-	if len(os.Args) > 1 {
-		fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-		fs.StringVar(&config.Prefix, "log4g-prefix", config.Prefix, "set log4g prefix")
-		fs.StringVar(&config.Level, "log4g-level", config.Level, "set log4g level")
-		fs.StringVar(&config.Flag, "log4g-flag", config.Flag, "set log4g flag, separated by '|'")
-		fs.StringVar(&config.Filename, "log4g-filename", config.Filename, "set log4g filename")
-		for i := 1; i < len(os.Args); i++ {
-			 if fs.Parse(os.Args[i:]) == nil {
-				 break
-			 }
-		}
-	}
+	//if len(os.Args) > 1 {
+	//	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	//	fs.StringVar(&Config.Prefix, "log4g-prefix", Config.Prefix, "set log4g prefix")
+	//	fs.StringVar(&Config.Level, "log4g-level", Config.Level, "set log4g level")
+	//	fs.StringVar(&Config.Flag, "log4g-flag", Config.Flag, "set log4g flag, separated by '|'")
+	//	fs.StringVar(&Config.Filename, "log4g-filename", Config.Filename, "set log4g filename")
+	//	for i := 1; i < len(os.Args); i++ {
+	//		 if fs.Parse(os.Args[i:]) == nil {
+	//			 break
+	//		 }
+	//	}
+	//}
 
+}
+
+func getFlagByName(name string) int {
+	flags := make(map[string]int)
+	flags["date"] = ldate
+	flags["time"] = ltime
+	flags["microseconds"] = lmicroseconds
+	flags["longfile"] = llongfile
+	flags["shortfile"] = lshortfile
+	flags["UTC"] = lutc
+	flags["stdFlags"] = lstdFlags
+	return flags[name]
+}
+
+func parseFlag(strFlag string, defaultValue int) int {
+	flags := strings.Split(strFlag, "|")
+	if len(flags) == 0 {
+		return defaultValue
+	}
+	flag := 0
+	for _, name := range flags {
+		flag = flag | getFlagByName(name)
+	}
+	return flag
 }

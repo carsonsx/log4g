@@ -3,47 +3,47 @@ package log4g
 
 func Example()  {
 
-	VERBOSE := ForName("VERBOSE", 650)
+	VERBOSE := ForLevelName("VERBOSE", 650)
 
 	Trace(LEVEL_TRACE)
 	Trace("message...")
 	Trace("%d", LEVEL_TRACE)
-	Trace("config -> %v", config)
+	Trace("Config -> %v", Config)
 
 	Log(VERBOSE, VERBOSE)
 	Log(VERBOSE,"message...")
 	Log(VERBOSE,"%d", VERBOSE)
-	Log(VERBOSE,"config -> %v", config)
+	Log(VERBOSE,"Config -> %v", Config)
 
 	Debug(LEVEL_DEBUG)
 	Debug("message...")
 	Debug("%d", LEVEL_DEBUG)
-	Debug("config -> %v", config)
+	Debug("Config -> %v", Config)
 
 	Info(LEVEL_INFO)
 	Info("message...")
 	Info("%d", LEVEL_INFO)
-	Info("config -> %v", config)
+	Info("Config -> %v", Config)
 
 	Warn(LEVEL_WARN)
 	Warn("message...")
 	Warn("%d", LEVEL_WARN)
-	Warn("config -> %v", config)
+	Warn("Config -> %v", Config)
 
 	Error(LEVEL_ERROR)
 	Error("message...")
 	Error("%d", LEVEL_ERROR)
-	Error("config -> %v", config)
+	Error("Config -> %v", Config)
 
 	Fatal(LEVEL_FATAL)
 	Fatal("message...")
 	Fatal("%d", LEVEL_FATAL)
-	Fatal("config -> %v", config)
+	Fatal("Config -> %v", Config)
 
-	Panic(level_PANIC)
+	Panic(LEVEL_PANIC)
 	Panic("message...")
-	Panic("%d", level_PANIC)
-	Panic("config -> %v", config)
+	Panic("%d", LEVEL_PANIC)
+	Panic("Config -> %v", Config)
 
 	// Output:
 }
