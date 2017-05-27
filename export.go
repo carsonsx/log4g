@@ -71,3 +71,39 @@ func IsDebugEnabled() bool {
 func IsTraceEnabled() bool {
 	return IsLevelEnabled(LEVEL_TRACE)
 }
+
+var (
+	useEnvMode bool
+	useFileMode bool
+)
+
+func SetEnv(env string)  {
+	if useFileMode {
+		panic("can not set env if programmatically load config file")
+	}
+	setEnv(env)
+	useEnvMode = true
+}
+
+//ensure
+func LoadConfig(filename string) {
+	if useEnvMode {
+		panic("can not programmatically load config file if set env")
+	}
+	err := loadConfig(filename)
+	if err != nil {
+		panic(err)
+	}
+	useEnvMode = true
+}
+
+func ReloadConfig() {
+	err := reloadConfig()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Close()  {
+	loggers.Close()
+}

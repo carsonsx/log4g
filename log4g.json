@@ -1,22 +1,24 @@
 {
   "level": "debug",
-  "prefix": "[log4g]",
+  "prefix": "[log4g] ",
   "flag": "date|time|shortfile",
   "loggers":[
     {
+      "disabled": true,
       "output": "stdout",
       "prefix": "[stdout]",
-      "flag": "date|ltime|longfile"
+      "flag": "date|ltime|shortfile"
     },
     {
+      "disabled": true,
       "output": "stderr"
     },
     {
       "output": "file",
       "filename": "logs/log4g.log",
       "maxsize": 100,
-      "maxlines": 0,
-      "maxcount": 100,
+      "maxlines": 20000,
+      "maxcount": 1000,
       "daily": true
     },
     {

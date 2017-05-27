@@ -1,69 +1,92 @@
 package log4g
 
 import (
-	"io/ioutil"
-	"log"
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"strings"
 )
 
-const config_file_path = "log4g.json"
+var (
+	gEnv         string
+	gFile        string
+	filePrefixes = []string{"./", "conf/", "config/"}
+)
 
-
-type loggerConfig struct{
-	Disabled bool `json:"disabled"`
+type loggerConfig struct {
+	Disabled bool   `json:"disabled"`
 	Prefix   string `json:"prefix"`
 	Level    string `json:"level"`
 	Flag     string `json:"flag"`
 	Output   string `json:"output"`
 	Filename string `json:"filename"`
-	Maxsize  int64 `json:"maxsize"`
-	Maxlines int `json:"maxlines"`
-	MaxCount int `json:"maxcount"`
-	Daily    bool `json:"daily"`
+	Maxsize  int64  `json:"maxsize"`
+	Maxlines int    `json:"maxlines"`
+	MaxCount int    `json:"maxcount"`
+	Daily    bool   `json:"daily"`
 }
 
-var Config struct{
-	Prefix   string `json:"prefix"`
-	Level    string `json:"level"`
-	Flag     string `json:"flag"`
+var Config struct {
+	Prefix  string          `json:"prefix"`
+	Level   string          `json:"level"`
+	Flag    string          `json:"flag"`
 	Loggers []*loggerConfig `json:"Loggers"`
 }
 
-func loadConfig() {
+func setEnv(env string) {
+	gEnv = env
+	loadDefaultConfig()
+}
+
+func loadDefaultConfig() {
+	found := false
+	basename := "log4g"
+	if gEnv != "" {
+		basename = "log4g-" + gEnv
+	}
+	basename += ".json"
+	for _, prefix := range filePrefixes {
+		filepath := prefix  + basename
+		if err := loadConfig(filepath); err == nil {
+			found = true
+			break
+		}
+	}
+	if !found {
+		//log.Printf("not found any %s config file in [%s] , use default stdout", basename, strings.Join(filePrefixes, ","))
+		initLoggers()
+	}
+}
+
+func loadConfig(filename string) error {
+	if gFile == filename {
+		return nil
+	}
+	gFile = filename
+	return reloadConfig()
+}
+
+func reloadConfig() error {
 
 	// default
 	Config.Level = LEVEL_DEBUG.Name()
 	Config.Flag = "date|time|shortfile"
 
 	// load form Config file
-	if _, err := os.Stat(config_file_path); err == nil {
-		data, err := ioutil.ReadFile(config_file_path)
+	_, err := os.Stat(gFile)
+	if err == nil { //file exist
+		data, err := ioutil.ReadFile(gFile)
 		if err != nil {
-			log.Print(err)
-			return
+			return err
 		}
 		err = json.Unmarshal(data, &Config)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
+		initLoggers()
+		//initialized = true
 	}
-
-	// override from os arguments
-	//if len(os.Args) > 1 {
-	//	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	//	fs.StringVar(&Config.Prefix, "log4g-prefix", Config.Prefix, "set log4g prefix")
-	//	fs.StringVar(&Config.Level, "log4g-level", Config.Level, "set log4g level")
-	//	fs.StringVar(&Config.Flag, "log4g-flag", Config.Flag, "set log4g flag, separated by '|'")
-	//	fs.StringVar(&Config.Filename, "log4g-filename", Config.Filename, "set log4g filename")
-	//	for i := 1; i < len(os.Args); i++ {
-	//		 if fs.Parse(os.Args[i:]) == nil {
-	//			 break
-	//		 }
-	//	}
-	//}
-
+	return err
 }
 
 func getFlagByName(name string) int {

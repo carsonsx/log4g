@@ -27,20 +27,20 @@ const (
 	calldepth = 4
 )
 
-var loggers *Loggers
+var loggers = new(Loggers)
 var gPrefix string
 var gLevel Level
 var gFlag = 0
 
 func init() {
 	initLevelName()
-	reload()
+	loadDefaultConfig()
 }
 
 type Logger interface {
 	BeforeLog()
-	Log(level Level, arg interface{}, args ...interface{})
-	AfterLog()
+	Log(level Level, arg interface{}, args ...interface{}) (n int, err error)
+	AfterLog(n int)
 	Close()
 }
 
@@ -53,8 +53,10 @@ func (ls Loggers) IsLevel(level Level) bool {
 func (ls Loggers) Log(level Level, arg interface{}, args ...interface{}) {
 	for _, logger := range ls {
 		logger.BeforeLog()
-		logger.Log(level, arg, args...)
-		logger.AfterLog()
+		n, err := logger.Log(level, arg, args...)
+		if err == nil {
+			logger.AfterLog(n)
+		}
 	}
 }
 
@@ -62,11 +64,6 @@ func (ls Loggers) Close() {
 	for _, logger := range ls {
 		logger.Close()
 	}
-}
-
-func reload()  {
-	loadConfig()
-	initLoggers()
 }
 
 func initLoggers()  {
@@ -161,9 +158,14 @@ func NewFileLogger(prefix string, flag int, filename string, maxlines int, maxsi
 
 	fileLogger.size = info.Size()
 	fileLogger.lastTime = info.ModTime()
+	//for test
+	//fileLogger.lastTime = info.ModTime().Add(- 24 * time.Hour)
 
 	filepath.Walk(fileLogger.filedir, func(path string, info os.FileInfo, err error) error {
-		if strings.HasPrefix(path, filename) {
+		if info.IsDir() {
+			return nil
+		}
+		if strings.HasPrefix(filepath.ToSlash(path), filepath.ToSlash(filename)) {
 			fileLogger.count++
 		}
 		return nil
@@ -189,39 +191,39 @@ type GenericLogger struct {
 
 	prefix    string
 	flag      int
-	lastBytes int
 	stop      bool
 	now  time.Time
-}
-
-func (l *GenericLogger) init() {
-
 }
 
 func (l *GenericLogger) BeforeLog() {
 	l.now = time.Now()
 }
 
-func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) {
-	if !l.stop && level <= gLevel {
-		var text string
-		switch arg.(type) {
-		case string:
-			text = fmt.Sprintf(arg.(string), args...)
-			l.Output(calldepth, level, text)
-		default:
-			text = fmt.Sprintf(fmt.Sprintf("%v", arg), args...)
-			l.Output(calldepth, level, text)
-		}
-		if level == LEVEL_FATAL {
-			os.Exit(1)
-		} else if level == LEVEL_PANIC {
-			panic(text)
-		}
+func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) (n int ,err error) {
+
+	if l.stop || level > gLevel {
+		return
 	}
+
+	var text string
+	switch arg.(type) {
+	case string:
+		text = fmt.Sprintf(arg.(string), args...)
+		n, err = l.Output(calldepth, level, text)
+	default:
+		text = fmt.Sprintf(fmt.Sprintf("%v", arg), args...)
+		n, err = l.Output(calldepth, level, text)
+	}
+	if level == LEVEL_FATAL {
+		os.Exit(1)
+	} else if level == LEVEL_PANIC {
+		panic(text)
+	}
+
+	return
 }
 
-func (l *GenericLogger) Output(calldepth int, level Level, s string) error {
+func (l *GenericLogger) Output(calldepth int, level Level, s string) (n int, err error) {
 
 	var file string
 	var line int
@@ -244,29 +246,15 @@ func (l *GenericLogger) Output(calldepth int, level Level, s string) error {
 	if len(s) == 0 || s[len(s)-1] != '\n' {
 		l.buf = append(l.buf, '\n')
 	}
-	n, err := l.out.Write(l.buf)
-	if err == nil {
-		l.lastBytes = n
-	} else {
-		l.lastBytes = 0
-	}
-
-	return err
+	return l.out.Write(l.buf)
 }
 
-func (l *GenericLogger) AfterLog() {
+func (l *GenericLogger) AfterLog(n int) {
 
 }
 
 func (l *GenericLogger) Close() {
 
-}
-
-// SetOutput sets the output destination for the logger.
-func (l *GenericLogger) SetOutput(w io.Writer) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.out = w
 }
 
 // Cheap integer to fixed-width decimal ASCII.  Give a negative width to avoid zero-padding.
@@ -333,7 +321,7 @@ func (l *GenericLogger) formatHeader(buf *[]byte, t time.Time, level Level, file
 		*buf = append(*buf, file...)
 		*buf = append(*buf, ':')
 		itoa(buf, line, -1)
-		//*buf = append(*buf, ": "...)
+		*buf = append(*buf, ' ')
 	}
 }
 
@@ -365,6 +353,10 @@ func (l *FileLogger) dailyBackup() {
 		ltYear, ltMonth, ltDay := l.lastTime.Date()
 		nowYear, nowMonth, nowDay := l.now.Date()
 		if ltDay != nowDay || ltMonth != nowMonth || ltYear != nowYear {
+
+			l.mu.Lock()
+			defer l.mu.Unlock()
+
 			strDate := fmt.Sprintf("%d%02d%02d", ltYear, ltMonth, ltDay)
 			dateDir := filepath.Join(l.filedir, strDate)
 			err := os.MkdirAll(dateDir, os.ModePerm)
@@ -372,7 +364,10 @@ func (l *FileLogger) dailyBackup() {
 				l.Close()
 				//move all file to date director
 				err = filepath.Walk(l.filedir, func(path string, info os.FileInfo, err error) error {
-					if strings.HasPrefix(path, l.filename) {
+					if info.IsDir() {
+						return nil
+					}
+					if strings.HasPrefix(filepath.ToSlash(path), filepath.ToSlash(l.filename)) {
 						os.Remove(filepath.Join(l.filedir, strDate, info.Name()))
 						return os.Rename(filepath.Join(l.filedir, info.Name()), filepath.Join(l.filedir, strDate, info.Name()))
 					}
@@ -399,23 +394,30 @@ func (l *FileLogger) newOutput() {
 		l.stop = true
 	}
 	l.file = output
-	l.SetOutput(output)
+	l.out = output
 	l.lines = 0
 	l.size = 0
 	l.count++
 }
 
-func (l *FileLogger) AfterLog() {
+func (l *FileLogger) AfterLog(n int) {
 
-	if l.lastBytes <= 0 {
+	if n <= 0 {
 		return
 	}
 
 	l.lastTime = l.now
 
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	l.lines++
-	l.size += int64(l.lastBytes)
+	l.size += int64(n)
 	if (l.maxlines > 0 && l.lines >= l.maxlines) || (l.maxsize > 0 && l.size > l.maxsize) {
+
+		log.Printf("lines=%d,maxlines=%d,count=%d", l.lines, l.maxlines, l.count)
+
+		//close log file
 		l.Close()
 
 		//remove the oldest log
