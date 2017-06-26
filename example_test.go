@@ -6,6 +6,8 @@ import (
 
 func Example()  {
 
+	defer Close()
+
 	VERBOSE := ForLevelName("VERBOSE", 650)
 
 	Trace(LEVEL_TRACE)

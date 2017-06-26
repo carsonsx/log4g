@@ -14,16 +14,25 @@ var (
 )
 
 type loggerConfig struct {
-	Disabled bool   `json:"disabled"`
-	Prefix   string `json:"prefix"`
-	Level    string `json:"level"`
-	Flag     string `json:"flag"`
-	Output   string `json:"output"`
-	Filename string `json:"filename"`
-	Maxsize  int64  `json:"maxsize"`
-	Maxlines int    `json:"maxlines"`
-	MaxCount int    `json:"maxcount"`
-	Daily    bool   `json:"daily"`
+	Disabled  bool   `json:"disabled"`
+	Prefix    string `json:"prefix"`
+	Level     string `json:"level"`
+	Flag      string `json:"flag"`
+	Output    string `json:"output"`
+	Filename  string `json:"filename"`
+	Maxsize   int64  `json:"maxsize"`
+	MaxLines  int    `json:"max_lines"`
+	MaxCount  int    `json:"max_count"`
+	Daily     bool   `json:"daily"`
+	Address   string `json:"address"`
+	DB        int    `json:"db"`
+	Password  string `json:"password"`
+	RedisType string `json:"redis_type"`
+	RedisKey  string `json:"redis_key"`
+	Network   string `json:"network"`
+	Codec     string `json:"codec"`
+	JsonKey   string `json:"json_key"`
+	JsonExt   string `json:"json_ext"`
 }
 
 var Config struct {
@@ -46,7 +55,7 @@ func loadDefaultConfig() {
 	}
 	basename += ".json"
 	for _, prefix := range filePrefixes {
-		filepath := prefix  + basename
+		filepath := prefix + basename
 		if err := loadConfig(filepath); err == nil {
 			found = true
 			break
