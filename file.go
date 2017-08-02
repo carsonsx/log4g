@@ -41,7 +41,7 @@ func newFileLogger(prefix string, flag int, filename string, maxlines int, maxsi
 	fileLogger.filename = filename
 	fileLogger.filedir = filepath.Dir(filename)
 	fileLogger.maxlines = maxlines
-	fileLogger.maxsize = maxsize * 1024 * 1024
+	fileLogger.maxsize = maxsize * 1024 * 1024 * 1024
 	fileLogger.maxcount = maxcount
 	fileLogger.format = "%s.%0" + strconv.Itoa(len(strconv.Itoa(maxcount-1))) +  "d"
 	fileLogger.daily = daily
