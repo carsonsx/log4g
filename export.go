@@ -1,5 +1,7 @@
 package log4g
 
+import "encoding/json"
+
 func Log(level Level, arg interface{}, args ...interface{})  {
 	loggers.Log(level, arg, args...)
 }
@@ -30,6 +32,29 @@ func Debug(arg interface{}, args ...interface{})  {
 
 func Trace(arg interface{}, args ...interface{})  {
 	loggers.Log(LEVEL_TRACE, arg, args...)
+}
+
+func ToJsonString(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
+func JsonInfo(v interface{}) {
+	if IsInfoEnabled() {
+		loggers.Log(LEVEL_INFO, ToJsonString(v))
+	}
+}
+
+func JsonDebug(v interface{}) {
+	if IsDebugEnabled() {
+		loggers.Log(LEVEL_DEBUG, ToJsonString(v))
+	}
+}
+
+func JsonTrace(v interface{}) {
+	if IsTraceEnabled() {
+		loggers.Log(LEVEL_TRACE, ToJsonString(v))
+	}
 }
 
 func GetLevel() Level {
