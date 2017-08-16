@@ -2,8 +2,8 @@ package log4g
 
 import (
 	"encoding/json"
-	"net"
 	"fmt"
+	"net"
 )
 
 func newSocketLogger(prefix string, flag int, lc *loggerConfig) Logger {
@@ -25,7 +25,7 @@ func newSocketLogger(prefix string, flag int, lc *loggerConfig) Logger {
 type SocketLogger struct {
 	*GenericLogger
 	conn net.Conn
-	lc  *loggerConfig
+	lc   *loggerConfig
 }
 
 func (l *SocketLogger) Write(p []byte) (n int, err error) {

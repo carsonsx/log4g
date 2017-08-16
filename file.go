@@ -1,19 +1,19 @@
 package log4g
 
 import (
+	"bytes"
 	"fmt"
-	"os"
+	"io"
 	"log"
-	"strings"
-	"time"
+	"os"
 	"path/filepath"
 	"strconv"
-	"bytes"
-	"io"
+	"strings"
+	"time"
 )
 
 func lineCounter(filename string) int {
-	file, err := os.OpenFile(filename, os.O_RDONLY | os.O_CREATE, 0660)
+	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0660)
 	if err != nil && !os.IsNotExist(err) {
 		return 0
 	}
@@ -37,15 +37,15 @@ func newFileLogger(prefix string, flag int, filename string, maxlines int, maxsi
 
 	os.MkdirAll(filepath.Dir(filename), os.ModePerm)
 
-	fileLogger := new (FileLogger)
+	fileLogger := new(FileLogger)
 	fileLogger.filename = filename
 	fileLogger.filedir = filepath.Dir(filename)
 	fileLogger.maxlines = maxlines
 	fileLogger.maxsize = maxsize * 1024 * 1024 * 1024
 	fileLogger.maxcount = maxcount
-	fileLogger.format = "%s.%0" + strconv.Itoa(len(strconv.Itoa(maxcount-1))) +  "d"
+	fileLogger.format = "%s.%0" + strconv.Itoa(len(strconv.Itoa(maxcount-1))) + "d"
 	fileLogger.daily = daily
-	fileLogger.lines  = lineCounter(filename)
+	fileLogger.lines = lineCounter(filename)
 
 	output, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
@@ -82,7 +82,7 @@ func newFileLogger(prefix string, flag int, filename string, maxlines int, maxsi
 type FileLogger struct {
 	*GenericLogger
 	filename string
-	filedir string
+	filedir  string
 	file     *os.File
 	maxlines int
 	maxsize  int64
@@ -139,7 +139,6 @@ func (l *FileLogger) dailyBackup() {
 		}
 	}
 }
-
 
 func (l *FileLogger) newOutput() {
 	//create new log file

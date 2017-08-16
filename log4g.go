@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"flag"
 )
 
 const (
@@ -19,8 +20,7 @@ const (
 	lshortfile
 	lutc
 	lstdFlags = ldate | ltime
-
-	calldepth = 4
+	calldepth = 5
 )
 
 var loggers = new(Loggers)
@@ -71,6 +71,14 @@ func (ls Loggers) Close() {
 	}
 }
 
+func parseArgLevel() string {
+	var level string
+	cmd := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	cmd.StringVar(&level, "log4g.level", "", "set log4g log level")
+	cmd.Parse(os.Args[1:])
+	return level
+}
+
 func initLoggers() {
 
 	if loggers != nil {
@@ -78,6 +86,12 @@ func initLoggers() {
 	}
 
 	gPrefix = Config.Prefix
+
+	argLevel := parseArgLevel()
+	if argLevel != "" {
+		Config.Level = argLevel
+	}
+
 	gLevel = GetLevelByName(Config.Level)
 	gFlag = parseFlag(Config.Flag, ldate|ltime|lshortfile)
 

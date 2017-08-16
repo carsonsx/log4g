@@ -22,8 +22,8 @@ const (
 )
 
 var (
-	levelNames = []string{"OFF", "PANIC", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}
-	names      = make(map[Level]string)
+	levelNames   = []string{"OFF", "PANIC", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"}
+	names        = make(map[Level]string)
 	alignedNames = make(map[Level]string)
 )
 
