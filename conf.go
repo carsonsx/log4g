@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	gEnv         string
-	gFile        string
-	filePrefixes = []string{"./", "conf/", "config/"}
+	gEnv                  string
+	gFile                 string
+	defaultConfigFilepath = []string{"./log4g.json", "conf/log4g.json", "config/log4g.json"}
 )
 
 type loggerConfig struct {
@@ -35,67 +35,57 @@ type loggerConfig struct {
 	JsonExt   string `json:"json_ext"`
 }
 
-var Config struct {
+func NewConfig() *Config {
+	c := new(Config)
+	c.initDefault()
+	return c
+}
+
+type Config struct {
 	Prefix  string          `json:"prefix"`
 	Level   string          `json:"level"`
 	Flag    string          `json:"flag"`
 	Loggers []*loggerConfig `json:"Loggers"`
 }
 
+func (c *Config) initDefault()  {
+	// default
+	c.Level = LEVEL_DEBUG.Name()
+	c.Flag = "date|time|shortfile"
+}
+
 func setEnv(env string) {
 	gEnv = env
-	loadDefaultConfig()
+	//loadDefaultConfig()
 }
 
-func loadDefaultConfig() {
-	found := false
-	basename := "log4g"
-	if gEnv != "" {
-		basename = "log4g-" + gEnv
-	}
-	basename += ".json"
-	for _, prefix := range filePrefixes {
-		filepath := prefix + basename
-		if err := loadConfig(filepath); err == nil {
-			found = true
-			break
-		}
-	}
-	if !found {
-		//log.Printf("not found any %s config file in [%s] , use default stdout", basename, strings.Join(filePrefixes, ","))
-		initLoggers()
-	}
-}
+func loadConfig(filepath string, mapping interface{}) error {
 
-func loadConfig(filename string) error {
-	if gFile == filename {
-		return nil
-	}
-	gFile = filename
-	return reloadConfig()
-}
-
-func reloadConfig() error {
-
-	// default
-	Config.Level = LEVEL_DEBUG.Name()
-	Config.Flag = "date|time|shortfile"
+	config := mapping.(*Config)
 
 	// load form Config file
-	_, err := os.Stat(gFile)
+	_, err := os.Stat(filepath)
 	if err == nil { //file exist
-		data, err := ioutil.ReadFile(gFile)
+		data, err := ioutil.ReadFile(filepath)
 		if err != nil {
 			return err
 		}
-		err = json.Unmarshal(data, &Config)
+		err = json.Unmarshal(data, config)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		initLoggers()
-		//initialized = true
 	}
 	return err
+}
+
+func parseFlag(strFlag string) int {
+	flags := strings.Split(strFlag, "|")
+
+	flag := 0
+	for _, name := range flags {
+		flag = flag | getFlagByName(name)
+	}
+	return flag
 }
 
 func getFlagByName(name string) int {
@@ -110,15 +100,4 @@ func getFlagByName(name string) int {
 	return flags[name]
 }
 
-func parseFlag(strFlag string, defaultValue int) int {
-	if strFlag == "" {
-		return defaultValue
-	}
-	flags := strings.Split(strFlag, "|")
 
-	flag := 0
-	for _, name := range flags {
-		flag = flag | getFlagByName(name)
-	}
-	return flag
-}

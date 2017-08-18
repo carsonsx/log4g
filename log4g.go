@@ -20,54 +20,16 @@ const (
 	lshortfile
 	lutc
 	lstdFlags = ldate | ltime
-	calldepth = 5
+	exportCallDepth = 5
+	customCallDepth = 4
 )
 
-var loggers = new(Loggers)
-var gPrefix string
-var gLevel Level
-var gFlag = 0
+var exportLogger = newLoggers(exportCallDepth, defaultConfigFilepath...)
 
 func init() {
-	initLevelName()
-	loadDefaultConfig()
-}
-
-type Logger interface {
-	BeforeLog()
-	Log(level Level, arg interface{}, args ...interface{}) (n int, err error)
-	AfterLog(n int)
-	Close()
-}
-
-type Loggers []Logger
-
-func (ls Loggers) IsLevel(level Level) bool {
-	return level <= gLevel
-}
-
-func (ls Loggers) Log(level Level, arg interface{}, args ...interface{}) {
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println(r)
-		}
-	}()
-
-	for _, logger := range ls {
-		logger.BeforeLog()
-		n, err := logger.Log(level, arg, args...)
-		if err == nil {
-			logger.AfterLog(n)
-		} else {
-			log.Println(err)
-		}
-	}
-}
-
-func (ls Loggers) Close() {
-	for _, logger := range ls {
-		logger.Close()
+	argLevel := parseArgLevel()
+	if argLevel != "" {
+		exportLogger.argLevel = GetLevelByName(argLevel)
 	}
 }
 
@@ -79,80 +41,250 @@ func parseArgLevel() string {
 	return level
 }
 
-func initLoggers() {
 
-	if loggers != nil {
-		loggers.Close()
+type Logger interface {
+	GetLevel() Level
+	BeforeLog()
+	Log(level Level, arg interface{}, args ...interface{}) (n int, err error)
+	AfterLog(n int)
+	Close()
+}
+
+func NewLoggers(filepath ...string) *Loggers {
+	return newLoggers(customCallDepth, filepath...)
+}
+
+func newLoggers(calldepth int, filepath ...string) *Loggers {
+	initLevelName()
+	ls := new(Loggers)
+	ls.calldepth = calldepth
+	ls.LoadConfig(filepath...)
+	return ls
+}
+
+type Loggers struct {
+	loggers []Logger
+	config *Config
+	argLevel Level
+	calldepth int
+	closed bool
+}
+
+func (ls *Loggers) LoadConfig(filepath ...string) {
+	ls.closed = true
+	ls.Close()
+	ls.config = NewConfig()
+	for _, fp := range filepath {
+		if AddFileChangedListener(fp, ls.config, loadConfig) == nil {
+			break
+		}
 	}
 
-	gPrefix = Config.Prefix
+	//clear loggers
+	ls.loggers = []Logger{}
 
-	argLevel := parseArgLevel()
-	if argLevel != "" {
-		Config.Level = argLevel
-	}
-
-	gLevel = GetLevelByName(Config.Level)
-	gFlag = parseFlag(Config.Flag, ldate|ltime|lshortfile)
-
-	alignLevelName(gLevel)
-
-	loggers = new(Loggers)
-	if len(Config.Loggers) == 0 {
-		*loggers = append(*loggers, newLogger(gPrefix, gFlag, os.Stdout))
+	if len(ls.config.Loggers) == 0 {
+		ls.loggers = append(ls.loggers, newLogger(ls.GetLevel(), ls.config.Prefix, parseFlag(ls.config.Flag), os.Stdout, ls.calldepth))
 	} else {
-		for _, lc := range Config.Loggers {
+		for _, lc := range ls.config.Loggers {
 			if lc.Disabled {
 				continue
 			}
-			prefix := gPrefix
+			prefix := ls.config.Prefix
 			if lc.Prefix != "" {
 				prefix = lc.Prefix
 			}
-			flag := parseFlag(lc.Flag, gFlag)
+			flag := parseFlag(ls.config.Flag)
+			if lc.Flag != "" {
+				flag = parseFlag(lc.Flag)
+			}
+			level := GetLevelByName(ls.config.Level)
+			if lc.Level != "" {
+				level = GetLevelByName(lc.Level)
+			}
+			var logger Logger
 			switch lc.Output {
 			case "stdout":
-				if logger := newLogger(prefix, flag, os.Stdout); logger != nil {
-					*loggers = append(*loggers, logger)
-				}
+				logger = newLogger(level, prefix, flag, os.Stdout, ls.calldepth)
 			case "stderr":
-				if logger := newLogger(prefix, flag, os.Stderr); logger != nil {
-					*loggers = append(*loggers, logger)
-				}
+				logger = newLogger(level, prefix, flag, os.Stderr, ls.calldepth)
 			case "file":
-				if logger := newFileLogger(prefix, flag, lc.Filename, lc.MaxLines, lc.Maxsize, lc.MaxCount, lc.Daily); logger != nil {
-					*loggers = append(*loggers, logger)
-				}
+				logger = newFileLogger(level, prefix, flag, lc.Filename, lc.MaxLines, lc.Maxsize, lc.MaxCount, lc.Daily, ls.calldepth)
 			case "redis":
-				if logger := newRedisLogger(prefix, flag, lc); logger != nil {
-					*loggers = append(*loggers, logger)
-				}
+				logger = newRedisLogger(level, prefix, flag, lc, ls.calldepth)
 			case "socket":
-				if logger := newSocketLogger(prefix, flag, lc); logger != nil {
-					*loggers = append(*loggers, logger)
-				}
+				logger = newSocketLogger(level, prefix, flag, lc, ls.calldepth)
 			}
+			if logger != nil {
+				ls.loggers = append(ls.loggers, logger)
+			}
+		}
+	}
+
+	ls.closed = false
+}
+
+func (ls *Loggers) GetLevel() Level {
+	if ls.argLevel > 0 {
+		return ls.argLevel
+	}
+	return GetLevelByName(ls.config.Level)
+}
+
+func (ls *Loggers) SetLevel(level Level) {
+	ls.argLevel = level
+}
+
+func (ls *Loggers) Panic(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_PANIC, arg, args...)
+}
+
+func (ls *Loggers) Fatal(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_FATAL, arg, args...)
+}
+
+func (ls *Loggers) Error(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_ERROR, arg, args...)
+}
+
+func (ls *Loggers) ErrorIf(arg interface{}, args ...interface{}) {
+	if arg == nil {
+		return
+	}
+	ls.Log(LEVEL_ERROR, arg, args...)
+}
+
+func (ls *Loggers) Warn(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_WARN, arg, args...)
+}
+
+func (ls *Loggers) Info(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_INFO, arg, args...)
+}
+
+func (ls *Loggers) Debug(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_DEBUG, arg, args...)
+}
+
+func (ls *Loggers) Trace(arg interface{}, args ...interface{}) {
+	ls.Log(LEVEL_TRACE, arg, args...)
+}
+
+func (ls *Loggers) IsLevelEnabled(level Level) bool {
+	return ls.IsLevel(level)
+}
+
+func (ls *Loggers) IsPanicEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_PANIC)
+}
+
+func (ls *Loggers) IsFatalEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_FATAL)
+}
+
+func (ls *Loggers) IsErrorEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_ERROR)
+}
+
+func (ls *Loggers) IsWarnEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_WARN)
+}
+
+func (ls *Loggers) IsInfoEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_INFO)
+}
+
+func (ls *Loggers) IsDebugEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_DEBUG)
+}
+
+func (ls *Loggers) IsTraceEnabled() bool {
+	return ls.IsLevelEnabled(LEVEL_TRACE)
+}
+
+func (ls *Loggers) IsLevel(level Level) bool {
+	for _, logger := range ls.loggers {
+		if logger.GetLevel() >= level {
+			return true
+		}
+	}
+	return false
+}
+
+func (ls *Loggers) Log(level Level, arg interface{}, args ...interface{}) {
+
+	//TODO add cache for logger reloading
+	if ls.closed {
+		return
+	}
+
+	if f, ok := arg.(func() (arg interface{}, args []interface{})); ok {
+		if ls.IsLevel(level) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Println(r)
+				}
+			}()
+			arg, args := f()
+			if arg == nil {
+				return
+			}
+			if args == nil {
+				ls.Log(level, arg)
+			} else {
+				ls.Log(level, arg, args...)
+			}
+		}
+		return
+	}
+
+	for _, logger := range ls.loggers {
+		logger.BeforeLog()
+		n, err := logger.Log(level, arg, args...)
+		if err == nil {
+			logger.AfterLog(n)
+		} else {
+			log.Println(err)
 		}
 	}
 }
 
-func newLogger(prefix string, flag int, output io.Writer) *GenericLogger {
+func (ls *Loggers) Open() {
+	ls.closed = false
+}
+
+func (ls *Loggers) Close() {
+	ls.closed = true
+	for _, logger := range ls.loggers {
+		logger.Close()
+	}
+}
+
+func newLogger(level Level, prefix string, flag int, output io.Writer, calldepth int) *GenericLogger {
 	logger := new(GenericLogger)
+	logger.level = level
 	logger.prefix = prefix
 	logger.flag = flag
 	logger.out = output
+	logger.calldepth = calldepth
 	return logger
 }
 
 type GenericLogger struct {
-	mu  sync.Mutex // ensures atomic writes; protects the following fields
-	out io.Writer  // destination for output
-	buf []byte     // for accumulating text to write
+	mu        sync.Mutex // ensures atomic writes; protects the following fields
+	out       io.Writer  // destination for output
+	buf       []byte     // for accumulating text to write
+	level     Level
+	prefix    string
+	flag      int
+	stop      bool
+	now       time.Time
+	calldepth int
+}
 
-	prefix string
-	flag   int
-	stop   bool
-	now    time.Time
+
+func (l *GenericLogger) GetLevel() Level {
+	return l.level
 }
 
 func (l *GenericLogger) BeforeLog() {
@@ -161,7 +293,7 @@ func (l *GenericLogger) BeforeLog() {
 
 func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) (n int, err error) {
 
-	if l.stop || level > gLevel {
+	if l.stop || level > l.level {
 		return
 	}
 
@@ -169,10 +301,10 @@ func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) (
 	switch arg.(type) {
 	case string:
 		text = fmt.Sprintf(arg.(string), args...)
-		n, err = l.Output(calldepth, level, text)
+		n, err = l.Output(l.calldepth, level, text)
 	default:
 		text = fmt.Sprintf(fmt.Sprintf("%v", arg), args...)
-		n, err = l.Output(calldepth, level, text)
+		n, err = l.Output(l.calldepth, level, text)
 	}
 	if level == LEVEL_FATAL {
 		os.Exit(1)

@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func newSocketLogger(prefix string, flag int, lc *loggerConfig) Logger {
+func newSocketLogger(level Level, prefix string, flag int, lc *loggerConfig, calldepth int) Logger {
 	socketLogger := new(SocketLogger)
 	var err error
 	if lc.Network == "" {
@@ -18,7 +18,7 @@ func newSocketLogger(prefix string, flag int, lc *loggerConfig) Logger {
 		return nil
 	}
 	socketLogger.lc = lc
-	socketLogger.GenericLogger = newLogger(prefix, flag, socketLogger)
+	socketLogger.GenericLogger = newLogger(level, prefix, flag, socketLogger, calldepth)
 	return socketLogger
 }
 

@@ -5,7 +5,7 @@ import (
 	"github.com/go-redis/redis"
 )
 
-func newRedisLogger(prefix string, flag int, lc *loggerConfig) Logger {
+func newRedisLogger(level Level, prefix string, flag int, lc *loggerConfig, calldepth int) Logger {
 	redisLogger := new(RedisLogger)
 	redisLogger.cli = redis.NewClient(&redis.Options{
 		Addr:     lc.Address,
@@ -13,7 +13,7 @@ func newRedisLogger(prefix string, flag int, lc *loggerConfig) Logger {
 		DB:       lc.DB,
 	})
 	redisLogger.lc = lc
-	redisLogger.GenericLogger = newLogger(prefix, flag, redisLogger)
+	redisLogger.GenericLogger = newLogger(level, prefix, flag, redisLogger, calldepth)
 	return redisLogger
 }
 

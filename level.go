@@ -32,6 +32,7 @@ func initLevelName() {
 		names[Level(i*100)] = name
 	}
 	names[LEVEL_ALL] = "ALL"
+	alignLevelName()
 }
 
 func (l Level) Name() string {
@@ -41,10 +42,10 @@ func (l Level) Name() string {
 	return "UNKNOWN"
 }
 
-func alignLevelName(level Level) {
+func alignLevelName() {
 	maxNameLen := 0
-	for l, n := range names {
-		if l <= level && len(n) > maxNameLen {
+	for _, n := range names {
+		if len(n) > maxNameLen {
 			maxNameLen = len(n)
 		}
 	}
@@ -64,7 +65,7 @@ func ForLevelName(name string, intLevel uint64) Level {
 		panic(fmt.Sprintf("the level %d has existed", intLevel))
 	}
 	names[l] = name
-	alignLevelName(gLevel)
+	alignLevelName()
 	return l
 }
 

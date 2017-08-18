@@ -33,7 +33,7 @@ func lineCounter(filename string) int {
 	}
 }
 
-func newFileLogger(prefix string, flag int, filename string, maxlines int, maxsize int64, maxcount int, daily bool) Logger {
+func newFileLogger(level Level, prefix string, flag int, filename string, maxlines int, maxsize int64, maxcount int, daily bool, calldepth int) Logger {
 
 	os.MkdirAll(filepath.Dir(filename), os.ModePerm)
 
@@ -74,7 +74,7 @@ func newFileLogger(prefix string, flag int, filename string, maxlines int, maxsi
 		return nil
 	})
 
-	fileLogger.GenericLogger = newLogger(prefix, flag, output)
+	fileLogger.GenericLogger = newLogger(level, prefix, flag, output, calldepth)
 
 	return fileLogger
 }

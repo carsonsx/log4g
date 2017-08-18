@@ -14,7 +14,7 @@
     {
       "disabled": true,
       "output": "file",
-      "filename": "logs/log4g.log",
+      "filename": "log/log4g.log",
       "maxsize": 100,
       "max_lines": 20000,
       "max_count": 1000,
