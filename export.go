@@ -3,79 +3,79 @@ package log4g
 import "encoding/json"
 
 func Log(level Level, arg interface{}, args ...interface{}) {
-	exportLogger.Log(level, arg, args...)
+	exportLoggers.Log(level, arg, args...)
 }
 
 func Panic(arg interface{}, args ...interface{}) {
-	exportLogger.Panic(arg, args...)
+	exportLoggers.Panic(arg, args...)
 }
 
 func Fatal(arg interface{}, args ...interface{}) {
-	exportLogger.Fatal(arg, args...)
+	exportLoggers.Fatal(arg, args...)
 }
 
 func Error(arg interface{}, args ...interface{}) {
-	exportLogger.Error(arg, args...)
+	exportLoggers.Error(arg, args...)
 }
 
 func ErrorIf(arg interface{}, args ...interface{}) {
-	exportLogger.ErrorIf(arg, args...)
+	exportLoggers.ErrorIf(arg, args...)
 }
 
 func Warn(arg interface{}, args ...interface{}) {
-	exportLogger.Warn(arg, args...)
+	exportLoggers.Warn(arg, args...)
 }
 
 func Info(arg interface{}, args ...interface{}) {
-	exportLogger.Info(arg, args...)
+	exportLoggers.Info(arg, args...)
 }
 
 func Debug(arg interface{}, args ...interface{}) {
-	exportLogger.Debug(arg, args...)
+	exportLoggers.Debug(arg, args...)
 }
 
 func Trace(arg interface{}, args ...interface{}) {
-	exportLogger.Trace(arg, args...)
+	exportLoggers.Trace(arg, args...)
 }
 
 func GetLevel() Level {
-	return exportLogger.GetLevel()
+	return exportLoggers.GetLevel()
 }
 
 func SetLevel(level Level) {
-	exportLogger.SetLevel(level)
+	exportLoggers.SetLevel(level)
 }
 
 func IsLevelEnabled(level Level) bool {
-	return exportLogger.IsLevel(level)
+	return exportLoggers.IsLevel(level)
 }
 
 func IsPanicEnabled() bool {
-	return exportLogger.IsPanicEnabled()
+	return exportLoggers.IsPanicEnabled()
 }
 
 func IsFatalEnabled() bool {
-	return exportLogger.IsFatalEnabled()
+	return exportLoggers.IsFatalEnabled()
 }
 
 func IsErrorEnabled() bool {
-	return exportLogger.IsErrorEnabled()
+	return exportLoggers.IsErrorEnabled()
 }
 
 func IsWarnEnabled() bool {
-	return exportLogger.IsWarnEnabled()
+	return exportLoggers.IsWarnEnabled()
 }
 
 func IsInfoEnabled() bool {
-	return exportLogger.IsInfoEnabled()
+	return exportLoggers.IsInfoEnabled()
 }
 
 func IsDebugEnabled() bool {
-	return exportLogger.IsDebugEnabled()
+	return exportLoggers.IsDebugEnabled()
 }
 
 func IsTraceEnabled() bool {
-	return exportLogger.IsTraceEnabled()
+	return exportLoggers.IsTraceEnabled()
 }
 
 func JsonString(v interface{}) string {
@@ -122,5 +122,5 @@ func JsonFunc(v interface{}) func() (arg interface{}, args []interface{}) {
 //}
 
 func Close() {
-	exportLogger.Close()
+	exportLoggers.Close()
 }

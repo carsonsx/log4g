@@ -90,13 +90,13 @@ func parseFlag(strFlag string) int {
 
 func getFlagByName(name string) int {
 	flags := make(map[string]int)
-	flags["date"] = ldate
-	flags["time"] = ltime
-	flags["microseconds"] = lmicroseconds
-	flags["longfile"] = llongfile
-	flags["shortfile"] = lshortfile
-	flags["UTC"] = lutc
-	flags["stdFlags"] = lstdFlags
+	flags["date"] = Ldate
+	flags["time"] = Ltime
+	flags["microseconds"] = Lmicroseconds
+	flags["longfile"] = Llongfile
+	flags["shortfile"] = Lshortfile
+	flags["UTC"] = LUTC
+	flags["stdFlags"] = LstdFlags
 	return flags[name]
 }
 

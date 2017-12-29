@@ -9,27 +9,28 @@ import (
 	"sync"
 	"time"
 	"flag"
+	"runtime/debug"
 )
 
 const (
 	//log format
-	ldate = 1 << iota
-	ltime
-	lmicroseconds
-	llongfile
-	lshortfile
-	lutc
-	lstdFlags = ldate | ltime
-	exportCallDepth = 5
-	customCallDepth = 4
+	Ldate                                                                                        = 1 << iota
+	Ltime
+	Lmicroseconds
+	Llongfile
+	Lshortfile
+	LUTC
+	LstdFlags              = Ldate | Ltime
+	exportCallDepth  = 5
+	customCallDepth  = 4
 )
 
-var exportLogger = newLoggers(exportCallDepth, defaultConfigFilepath...)
+var exportLoggers = newLoggers(exportCallDepth, defaultConfigFilepath...)
 
 func init() {
 	argLevel := parseArgLevel()
 	if argLevel != "" {
-		exportLogger.argLevel = GetLevelByName(argLevel)
+		exportLoggers.argLevel = GetLevelByName(argLevel)
 	}
 }
 
@@ -39,15 +40,6 @@ func parseArgLevel() string {
 	cmd.StringVar(&level, "log4g.level", "", "set log4g log level")
 	cmd.Parse(os.Args[1:])
 	return level
-}
-
-
-type Logger interface {
-	GetLevel() Level
-	BeforeLog()
-	Log(level Level, arg interface{}, args ...interface{}) (n int, err error)
-	AfterLog(n int)
-	Close()
 }
 
 func NewLoggers(filepath ...string) *Loggers {
@@ -218,6 +210,10 @@ func (ls *Loggers) Log(level Level, arg interface{}, args ...interface{}) {
 		return
 	}
 
+	if ls.argLevel > 0 && ls.argLevel < level  {
+		return
+	}
+
 	if f, ok := arg.(func() (arg interface{}, args []interface{})); ok {
 		if ls.IsLevel(level) {
 			defer func() {
@@ -225,21 +221,14 @@ func (ls *Loggers) Log(level Level, arg interface{}, args ...interface{}) {
 					log.Println(r)
 				}
 			}()
-			arg, args := f()
-			if arg == nil {
-				return
-			}
-			if args == nil {
-				ls.Log(level, arg)
-			} else {
-				ls.Log(level, arg, args...)
-			}
+			arg, args = f()
 		}
-		return
 	}
 
+	now := time.Now()
+
 	for _, logger := range ls.loggers {
-		logger.BeforeLog()
+		logger.SetTime(now)
 		n, err := logger.Log(level, arg, args...)
 		if err == nil {
 			logger.AfterLog(n)
@@ -270,6 +259,16 @@ func newLogger(level Level, prefix string, flag int, output io.Writer, calldepth
 	return logger
 }
 
+
+type Logger interface {
+	GetLevel() Level
+	BeforeLog()
+	SetTime(t time.Time)
+	Log(level Level, arg interface{}, args ...interface{}) (n int, err error)
+	AfterLog(n int)
+	Close()
+}
+
 type GenericLogger struct {
 	mu        sync.Mutex // ensures atomic writes; protects the following fields
 	out       io.Writer  // destination for output
@@ -288,8 +287,12 @@ func (l *GenericLogger) GetLevel() Level {
 }
 
 func (l *GenericLogger) BeforeLog() {
-	l.now = time.Now()
 }
+
+func (l *GenericLogger) SetTime(t time.Time) {
+	l.now = t
+}
+
 
 func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) (n int, err error) {
 
@@ -310,6 +313,8 @@ func (l *GenericLogger) Log(level Level, arg interface{}, args ...interface{}) (
 		os.Exit(1)
 	} else if level == LEVEL_PANIC {
 		panic(text)
+	} else if level == LEVEL_ERROR {
+		l.Output(l.calldepth, level, string(debug.Stack()))
 	}
 
 	return
@@ -321,7 +326,7 @@ func (l *GenericLogger) Output(calldepth int, level Level, s string) (n int, err
 	var line int
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.flag&(lshortfile|llongfile) != 0 {
+	if l.flag&(Lshortfile|Llongfile) != 0 {
 		// release lock while getting caller info - it's expensive.
 		l.mu.Unlock()
 		var ok bool
@@ -368,11 +373,11 @@ func itoa(buf *[]byte, i int, wid int) {
 
 func (l *GenericLogger) formatHeader(buf *[]byte, t time.Time, level Level, file string, line int) {
 	*buf = append(*buf, l.prefix...)
-	if l.flag&lutc != 0 {
-		t = t.UTC()
-	}
-	if l.flag&(ldate|ltime|lmicroseconds) != 0 {
-		if l.flag&ldate != 0 {
+	if l.flag&(Ldate|Ltime|Lmicroseconds) != 0 {
+		if l.flag&LUTC != 0 {
+			t = t.UTC()
+		}
+		if l.flag&Ldate != 0 {
 			year, month, day := t.Date()
 			itoa(buf, year, 4)
 			*buf = append(*buf, '/')
@@ -381,14 +386,14 @@ func (l *GenericLogger) formatHeader(buf *[]byte, t time.Time, level Level, file
 			itoa(buf, day, 2)
 			*buf = append(*buf, ' ')
 		}
-		if l.flag&(ltime|lmicroseconds) != 0 {
+		if l.flag&(Ltime|Lmicroseconds) != 0 {
 			hour, min, sec := t.Clock()
 			itoa(buf, hour, 2)
 			*buf = append(*buf, ':')
 			itoa(buf, min, 2)
 			*buf = append(*buf, ':')
 			itoa(buf, sec, 2)
-			if l.flag&lmicroseconds != 0 {
+			if l.flag&Lmicroseconds != 0 {
 				*buf = append(*buf, '.')
 				itoa(buf, t.Nanosecond()/1e3, 6)
 			}
@@ -399,8 +404,8 @@ func (l *GenericLogger) formatHeader(buf *[]byte, t time.Time, level Level, file
 	*buf = append(*buf, getAlignedName(level)...)
 	*buf = append(*buf, ' ')
 
-	if l.flag&(lshortfile|llongfile) != 0 {
-		if l.flag&lshortfile != 0 {
+	if l.flag&(Lshortfile|Llongfile) != 0 {
+		if l.flag&Lshortfile != 0 {
 			short := file
 			for i := len(file) - 1; i > 0; i-- {
 				if file[i] == '/' {
@@ -413,6 +418,6 @@ func (l *GenericLogger) formatHeader(buf *[]byte, t time.Time, level Level, file
 		*buf = append(*buf, file...)
 		*buf = append(*buf, ':')
 		itoa(buf, line, -1)
-		*buf = append(*buf, ' ')
+		*buf = append(*buf, ": "...)
 	}
 }
