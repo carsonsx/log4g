@@ -12,12 +12,12 @@
       "output": "stderr"
     },
     {
-      "disabled": true,
+      "disabled": false,
       "output": "file",
-      "filename": "log/log4g.log",
+      "filename": "log/info.log",
       "maxsize": 100,
-      "max_lines": 20000,
-      "max_count": 1000,
+      "max_lines": 0,
+      "max_count": 0,
       "daily": true
     },
     {

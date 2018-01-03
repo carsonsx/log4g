@@ -10,6 +10,7 @@ import (
 	"time"
 	"flag"
 	"runtime/debug"
+	"github.com/carsonsx/gutil"
 )
 
 const (
@@ -66,11 +67,7 @@ func (ls *Loggers) LoadConfig(filepath ...string) {
 	ls.closed = true
 	ls.Close()
 	ls.config = NewConfig()
-	for _, fp := range filepath {
-		if AddFileChangedListener(fp, ls.config, loadConfig) == nil {
-			break
-		}
-	}
+	gutil.ListenJsonFile(ls.config, loadConfig, filepath...)
 
 	//clear loggers
 	ls.loggers = []Logger{}
