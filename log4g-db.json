@@ -2,7 +2,7 @@
   "level": "debug",
   "prefix": "[db] ",
   "flag": "date|time|longfile",
-  "loggers":[
+  "items":[
     {
       "disabled": false,
       "output": "stdout"

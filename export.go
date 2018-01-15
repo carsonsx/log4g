@@ -22,6 +22,10 @@ func ErrorIf(arg interface{}, args ...interface{}) {
 	exportLoggers.ErrorIf(arg, args...)
 }
 
+func ErrorStack(arg interface{}, args ...interface{}) {
+	exportLoggers.ErrorStack(arg, args...)
+}
+
 func Warn(arg interface{}, args ...interface{}) {
 	exportLoggers.Warn(arg, args...)
 }
@@ -120,6 +124,10 @@ func JsonFunc(v interface{}) func() (arg interface{}, args []interface{}) {
 //		panic(err)
 //	}
 //}
+
+func Flush() {
+	exportLoggers.Flush()
+}
 
 func Close() {
 	exportLoggers.Close()

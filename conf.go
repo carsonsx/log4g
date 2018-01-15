@@ -10,7 +10,7 @@ import (
 var (
 	gEnv                  string
 	gFile                 string
-	defaultConfigFilepath = []string{"./log4g.json", "conf/log4g.json", "config/log4g.json"}
+	defaultConfigFilepath = []string{"log4g.json", "conf/log4g.json", "config/log4g.json"}
 )
 
 type loggerConfig struct {
@@ -19,6 +19,7 @@ type loggerConfig struct {
 	Level     string `json:"level"`
 	Flag      string `json:"flag"`
 	Output    string `json:"output"`
+	Buffer    bool `json:"buffer"`
 	Filename  string `json:"filename"`
 	Maxsize   int64  `json:"maxsize"`
 	MaxLines  int    `json:"max_lines"`
@@ -42,10 +43,10 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Prefix  string          `json:"prefix"`
-	Level   string          `json:"level"`
-	Flag    string          `json:"flag"`
-	Loggers []*loggerConfig `json:"Loggers"`
+	Prefix string          `json:"prefix"`
+	Level  string          `json:"level"`
+	Flag   string          `json:"flag"`
+	Items  []*loggerConfig `json:"items"`
 }
 
 func (c *Config) initDefault()  {

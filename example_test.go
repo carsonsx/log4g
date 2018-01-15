@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-var DBLog = NewLoggers("log4g-db.json")
+var DBLog = NewLogger("log4g-db.json")
 
 func Example()  {
 

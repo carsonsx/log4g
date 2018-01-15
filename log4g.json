@@ -2,7 +2,7 @@
   "level": "debug",
   "prefix": "[log4g] ",
   "flag": "date|time|shortfile",
-  "loggers":[
+  "items":[
     {
       "disabled": false,
       "output": "stdout"
@@ -14,7 +14,7 @@
     {
       "disabled": false,
       "output": "file",
-      "filename": "log/info.log",
+      "filename": "log/log4g.log",
       "maxsize": 100,
       "max_lines": 0,
       "max_count": 0,
